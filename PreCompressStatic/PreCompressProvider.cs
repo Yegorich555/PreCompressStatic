@@ -33,6 +33,7 @@ namespace PreCompressStatic
 
         public IFileInfo GetFileInfo(string subpath)
         {
+            // todo compress only if file size bigger expected
             if (_httpContextAccessor.HttpContext.Request.Headers.TryGetValue("Accept-Encoding", out var encodings))
             {
                 if (encodings.Any(encoding => encoding.Contains("br")))
@@ -104,7 +105,7 @@ namespace PreCompressStatic
             return app.UseStaticFiles(new StaticFileOptions
             {
                 ServeUnknownFileTypes = true,
-                FileProvider = new PreCompressProvider(s.GetService<IHost>(), s.GetService<IHttpContextAccessor>()),
+                FileProvider = new PreCompressProvider(s.GetRequiredService<IHost>(), s.GetRequiredService<IHttpContextAccessor>()),
                 OnPrepareResponse = ctx =>
                 {
                     var headers = ctx.Context.Response.Headers;
