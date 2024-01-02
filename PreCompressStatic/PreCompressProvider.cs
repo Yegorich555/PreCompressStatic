@@ -40,6 +40,7 @@ namespace PreCompressStatic
 
         public static readonly Compressor CompressorBr = new() { Extension = ".br", CompressStream = (s) => new BrotliStream(s, CompressionMode.Compress) };
         public static readonly Compressor CompressorZip = new() { Extension = ".gz", CompressStream = (s) => new GZipStream(s, CompressionMode.Compress) };
+        public static int MinSize = 8192; // compress only when size bigger
 
         public IFileInfo FindAndCompress(Compressor c, string subpath)
         {
@@ -48,7 +49,7 @@ namespace PreCompressStatic
             else
             {
                 var originalFile = _fileProvider.GetFileInfo(subpath);
-                if (originalFile.Exists)
+                if (originalFile.Exists && originalFile.Length > MinSize)
                 {
                     using (var stream = originalFile.CreateReadStream())
                     {
@@ -70,7 +71,6 @@ namespace PreCompressStatic
 
         public IFileInfo GetFileInfo(string subpath)
         {
-            // todo compress only if file size bigger expected
             if (_httpContextAccessor.HttpContext.Request.Headers.TryGetValue("Accept-Encoding", out var encodings))
             {
                 if (encodings.Any(e => e.Contains("br")))
@@ -92,7 +92,7 @@ namespace PreCompressStatic
         /// </summary>
         public static IApplicationBuilder UsePreCompressStaticFiles(this IApplicationBuilder app)
         {
-            // TODO: allow user extend staticFileOptions
+            // TODO: allow user extend staticFileOptions & MinSize
             var s = app.ApplicationServices;
             return app.UseStaticFiles(new StaticFileOptions
             {
