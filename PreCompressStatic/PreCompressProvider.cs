@@ -6,6 +6,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
+using System;
 
 #if NETSTANDARD2_0
 using IHost = Microsoft.AspNetCore.Hosting.IHostingEnvironment;
@@ -16,6 +17,12 @@ using IHost = Microsoft.AspNetCore.Hosting.IWebHostEnvironment;
 
 namespace PreCompressStatic
 {
+    public struct Compressor
+    {
+        public string Extension { get; set; }
+        public Func<FileStream, Stream> CompressStream { get; set; }
+    }
+
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0063:Use simple 'using' statement", Justification = "<Pending>")]
     public class PreCompressProvider : IFileProvider
     {
@@ -31,61 +38,45 @@ namespace PreCompressStatic
         public IDirectoryContents GetDirectoryContents(string subpath)
             => _fileProvider.GetDirectoryContents(subpath);
 
+        public static readonly Compressor CompressorBr = new() { Extension = ".br", CompressStream = (s) => new BrotliStream(s, CompressionMode.Compress) };
+        public static readonly Compressor CompressorZip = new() { Extension = ".gz", CompressStream = (s) => new GZipStream(s, CompressionMode.Compress) };
+
+        public IFileInfo FindAndCompress(Compressor c, string subpath)
+        {
+            var file = _fileProvider.GetFileInfo(subpath.EndsWith(c.Extension) ? subpath : subpath + c.Extension);
+            if (file.Exists) return file;
+            else
+            {
+                var originalFile = _fileProvider.GetFileInfo(subpath);
+                if (originalFile.Exists)
+                {
+                    using (var stream = originalFile.CreateReadStream())
+                    {
+                        using (var fStream = File.Create(originalFile.PhysicalPath + c.Extension))
+                        {
+                            using (var cStream = c.CompressStream(fStream))
+                            {
+                                stream.CopyTo(cStream);
+                                cStream.Close(); // ensure that i/o operation with file is done => without it file info length can be 0
+                                var nFile = _fileProvider.GetFileInfo(subpath + c.Extension);
+                                if (nFile.Exists) return nFile;
+                            }
+                        }
+                    }
+                }
+            }
+            return _fileProvider.GetFileInfo(subpath);
+        }
+
         public IFileInfo GetFileInfo(string subpath)
         {
             // todo compress only if file size bigger expected
             if (_httpContextAccessor.HttpContext.Request.Headers.TryGetValue("Accept-Encoding", out var encodings))
             {
-                if (encodings.Any(encoding => encoding.Contains("br")))
-                {
-                    var file = _fileProvider.GetFileInfo(subpath.EndsWith(".br") ? subpath : subpath + ".br");
-                    if (file.Exists) return file;
-                    else
-                    {
-                        var originalFile = _fileProvider.GetFileInfo(subpath);
-                        if (originalFile.Exists)
-                        {
-                            using (var stream = originalFile.CreateReadStream())
-                            {
-                                using (var compressedStream = File.Create(originalFile.PhysicalPath + ".br"))
-                                {
-                                    using (var brStream = new BrotliStream(compressedStream, CompressionMode.Compress))
-                                    {
-                                        stream.CopyTo(brStream);
-                                        brStream.Close(); // ensure that i/o operation with file is done => without it file info length can be 0
-                                        var brFile = _fileProvider.GetFileInfo(subpath + ".br");
-                                        if (brFile.Exists) return brFile;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (encodings.Any(encoding => encoding.Contains("gzip")))
-                {
-                    var file = _fileProvider.GetFileInfo(subpath.EndsWith(".gz") ? subpath : subpath + ".gz"); ;
-                    if (file.Exists) return file;
-                    else
-                    {
-                        var originalFile = _fileProvider.GetFileInfo(subpath);
-                        if (originalFile.Exists)
-                        {
-                            using (var stream = originalFile.CreateReadStream())
-                            {
-                                using (var compressedStream = File.Create(originalFile.PhysicalPath + ".gz"))
-                                {
-                                    using (var gzStream = new GZipStream(compressedStream, CompressionMode.Compress))
-                                    {
-                                        stream.CopyTo(gzStream);
-                                        gzStream.Close(); // ensure that i/o operation with file is done => without it file info length can be 0
-                                        var gzFile = _fileProvider.GetFileInfo(subpath + ".gz");
-                                        if (gzFile.Exists) return gzFile;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                if (encodings.Any(e => e.Contains("br")))
+                    return FindAndCompress(CompressorBr, subpath);
+                else if (encodings.Any(e => e.Contains("gzip")))
+                    return FindAndCompress(CompressorZip, subpath);
             }
             return _fileProvider.GetFileInfo(subpath);
         }
@@ -101,6 +92,7 @@ namespace PreCompressStatic
         /// </summary>
         public static IApplicationBuilder UsePreCompressStaticFiles(this IApplicationBuilder app)
         {
+            // TODO: allow user extend staticFileOptions
             var s = app.ApplicationServices;
             return app.UseStaticFiles(new StaticFileOptions
             {
