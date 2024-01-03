@@ -15,19 +15,8 @@ namespace Example
         {
             app.UseDeveloperExceptionPage();
             app.UseRouting();
-            app.UsePreCompressStaticFiles();
-            //app.UseStaticFiles();
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapFallbackToFile("index.html", new StaticFileOptions
-                {
-                    OnPrepareResponse = x =>
-                    {
-                        var httpContext = x.Context; // endPoint for SPA
-                        var path = httpContext.Request.RouteValues["path"];
-                    }
-                });
-            });
+            app.UsePreCompressStaticFiles(); // app.UseStaticFiles();
+            app.UseEndpoints(e => { e.MapFallbackToFile("index.html"); });
         }
     }
 }
