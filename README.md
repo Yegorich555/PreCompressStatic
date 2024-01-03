@@ -42,7 +42,7 @@ namespace Example
 
 ## Example
 
-A example can be found in the [Example](https://github.com/Yegorich555/PreCompressStatic/tree/master/Example) directory.
+An example can be found in the [Example](https://github.com/Yegorich555/PreCompressStatic/tree/master/Example) directory.
 
 ## Acknowledgements
 
