@@ -108,7 +108,7 @@ namespace PreCompressStatic
             var httpCtx = s.GetService<IHttpContextAccessor>();
             if (httpCtx == null)
             {
-                throw new ArgumentNullException("IHttpContextAccessor is null. Add 'services.AddHttpContextAccessor()' into Startup.ConfigureServices block");
+                throw new ArgumentNullException("IHttpContextAccessor", "Add 'services.AddHttpContextAccessor()' into Startup.ConfigureServices block");
             }
             var sc = new PreCompressProvider(s.GetRequiredService<IHost>(), httpCtx);
             var o = new PreCompressOptions
