@@ -1,6 +1,6 @@
 # PreCompressStatic
 
-Compress **once** by demand if required and send preCompressed static files to the browser
+ASP.NET Core. Compress **once** by demand if required and send preCompressed static files to the browser
 
 [![NuGet version](https://badge.fury.io/nu/PreCompressStatic.svg)](https://www.nuget.org/packages/PreCompressStatic)
 [![Nuget](https://img.shields.io/nuget/dt/PreCompressStatic)](https://www.nuget.org/packages/PreCompressStatic)
