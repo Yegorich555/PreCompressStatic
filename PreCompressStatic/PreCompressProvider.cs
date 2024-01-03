@@ -40,7 +40,7 @@ namespace PreCompressStatic
 
         public static readonly Compressor CompressorBr = new() { Extension = ".br", CompressStream = (s) => new BrotliStream(s, CompressionMode.Compress) };
         public static readonly Compressor CompressorZip = new() { Extension = ".gz", CompressStream = (s) => new GZipStream(s, CompressionMode.Compress) };
-        public static int MinSizeBytes = 8192; // compress only when size bigger
+        public int MinSizeBytes; // compress only when size bigger
 
         public IFileInfo FindAndCompress(Compressor c, string subpath)
         {
@@ -90,17 +90,26 @@ namespace PreCompressStatic
 
     public static class ApplicationBuilderExtensions
     {
+
         /// <summary>
         /// Enables static files serving with pre compression (if pre compressed files is missing it creates once)
         /// </summary>
         public static IApplicationBuilder UsePreCompressStaticFiles(this IApplicationBuilder app)
         {
-            // TODO: allow user extend staticFileOptions & MinSize
+            return app.UsePreCompressStaticFiles(null);
+        }
+
+        /// <summary>
+        /// Enables static files serving with pre compression (if pre compressed files is missing it creates once)
+        /// </summary>
+        public static IApplicationBuilder UsePreCompressStaticFiles(this IApplicationBuilder app, Action<PreCompressOptions> configure)
+        {
             var s = app.ApplicationServices;
-            return app.UseStaticFiles(new StaticFileOptions
+            var sc = new PreCompressProvider(s.GetRequiredService<IHost>(), s.GetRequiredService<IHttpContextAccessor>());
+            var o = new PreCompressOptions
             {
                 ServeUnknownFileTypes = true,
-                FileProvider = new PreCompressProvider(s.GetRequiredService<IHost>(), s.GetRequiredService<IHttpContextAccessor>()),
+                FileProvider = sc,
                 OnPrepareResponse = ctx =>
                 {
                     var headers = ctx.Context.Response.Headers;
@@ -110,7 +119,19 @@ namespace PreCompressStatic
                     else if (ctx.File.Name.EndsWith(".gz"))
                         headers.Add("Content-Encoding", "gzip");
                 }
-            });
+            };
+            configure?.Invoke(o);
+            sc.MinSizeBytes = o.MinSizeKb * 1024;
+
+            return app.UseStaticFiles(o);
         }
+    }
+
+    public class PreCompressOptions : StaticFileOptions
+    {
+        /// <summary>
+        /// Compress only when file size is bigger than pointed; 8kb by default
+        /// </summary>
+        public int MinSizeKb { get; set; } = 8;
     }
 }
