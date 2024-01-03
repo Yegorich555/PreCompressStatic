@@ -105,7 +105,12 @@ namespace PreCompressStatic
         public static IApplicationBuilder UsePreCompressStaticFiles(this IApplicationBuilder app, Action<PreCompressOptions> configure)
         {
             var s = app.ApplicationServices;
-            var sc = new PreCompressProvider(s.GetRequiredService<IHost>(), s.GetRequiredService<IHttpContextAccessor>());
+            var httpCtx = s.GetService<IHttpContextAccessor>();
+            if (httpCtx == null)
+            {
+                throw new ArgumentNullException("IHttpContextAccessor is null. Add 'services.AddHttpContextAccessor()' into Startup.ConfigureServices block");
+            }
+            var sc = new PreCompressProvider(s.GetRequiredService<IHost>(), httpCtx);
             var o = new PreCompressOptions
             {
                 ServeUnknownFileTypes = true,
