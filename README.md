@@ -4,6 +4,7 @@ Compress **once** by demand if required and send preCompressed static files to t
 
 [![NuGet version](https://badge.fury.io/nu/PreCompressStatic.svg)](https://www.nuget.org/packages/PreCompressStatic)
 [![Nuget](https://img.shields.io/nuget/dt/PreCompressStatic)](https://www.nuget.org/packages/PreCompressStatic)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## How to use
 
