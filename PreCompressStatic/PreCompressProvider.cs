@@ -120,9 +120,9 @@ namespace PreCompressStatic
                     var headers = ctx.Context.Response.Headers;
 
                     if (ctx.File.Name.EndsWith(".br"))
-                        headers.Add("Content-Encoding", "br");
+                        headers.Append("Content-Encoding", "br");
                     else if (ctx.File.Name.EndsWith(".gz"))
-                        headers.Add("Content-Encoding", "gzip");
+                        headers.Append("Content-Encoding", "gzip");
                 }
             };
             configure?.Invoke(o);
